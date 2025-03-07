@@ -35,26 +35,26 @@ local fmt_opts = function(opt)
 	return ""
 end
 
--- shell compatibility
-local sh_compat = {
+-- shell compatibility table
+local sh_compat_tbl = {
 	default = {
 		wrap = function(cmd)
 			return "(" .. cmd .. ")"
 		end,
-		rg_logic = { cond = "[[ ! $FZF_PROMPT =~ rg ]] &&", op = "||" },
-		fd_logic = { cond = "[[ ! $FZF_PROMPT =~ fd ]] &&", op = "||" },
+		rg_prompt = { cond = "[[ ! $FZF_PROMPT =~ rg ]] &&", op = "||" },
+		fd_prompt = { cond = "[[ ! $FZF_PROMPT =~ fd ]] &&", op = "||" },
 	},
 	fish = {
 		wrap = function(cmd)
 			return "begin; " .. cmd .. "; end"
 		end,
-		rg_logic = { cond = 'not string match -q "*rg*" $FZF_PROMPT; and', op = "; or" },
-		fd_logic = { cond = 'not string match -q "*fd*" $FZF_PROMPT; and', op = "; or" },
+		rg_prompt = { cond = 'not string match -q "*rg*" $FZF_PROMPT; and', op = "; or" },
+		fd_prompt = { cond = 'not string match -q "*fd*" $FZF_PROMPT; and', op = "; or" },
 	},
 }
 
-local function shell_helper()
-	return sh_compat[shell] or sh_compat.default
+local function get_helper_from_sh_compat_tbl()
+	return sh_compat_tbl[shell] or sh_compat_tbl.default
 end
 
 -- get custom options from setup
@@ -77,7 +77,6 @@ local get_custom_opts = ya.sync(function()
 	}
 end)
 
--- preview functions for `fd` search
 local function eza_preview(prev_type, opts)
 	-- mimic bat grid,header style
 	local bar =
@@ -85,52 +84,52 @@ local function eza_preview(prev_type, opts)
 	local bar_n =
 		[[echo -e "\n\x1b[38;2;148;130;158m────────────────────────────────────────────────────────────────────────────────\x1b[m";]]
 
-	local name = {
+	local eza_prev_type = {
 		default = [[echo -ne "Dir: \x1b[1m\x1b[38m{}\x1b[m";]],
-		meta = [[test -d {} && echo -ne "Dir: \x1b[1m\x1b[38m{}\x1b[m"]]
+		meta_fd = [[test -d {} && echo -ne "Dir: \x1b[1m\x1b[38m{}\x1b[m"]]
 			.. [[ || echo -ne "File: \x1b[1m\x1b[38m{}\x1b[m";]],
+		meta_rg = [[echo -ne "File: \x1b[1m\x1b[38m{]] .. "1" .. [[}\x1b[m";]],
 	}
 
 	local extra_flags = {
 		default = "--oneline " .. opts.eza,
-		meta = "--git --git-repos --header --long --mounts --no-user --octal-permissions " .. opts.eza_meta,
+		meta_fd = "--git --git-repos --header --long --mounts --no-user --octal-permissions " .. opts.eza_meta,
+		meta_rg = "--git --git-repos --header --long --mounts --no-user --octal-permissions " .. opts.eza_meta,
 	}
 
 	return table.concat({
 		bar,
-		name[prev_type],
-		[[test -z "$(eza -A {})" && echo -ne "  <EMPTY>\n" ||]],
+		eza_prev_type[prev_type],
+		[[test -z "$(eza -A {1})" && echo -ne "  <EMPTY>\n" ||]],
 		bar_n,
 		"eza",
 		extra_flags[prev_type],
-		"--color=always --group-directories-first --icons {};",
+		"--color=always --group-directories-first --icons {" .. "1" .. "};",
 		bar,
 	}, " ")
 end
 
--- FZF command builders for different modes
-local function build_content_search_cmd(search_type, opts)
-	local sh = shell_helper()
+-- fzf with `rg` or `rga` search
+local function get_fzf_cmd_for_content_search(search_type, opts)
+	local sh = get_helper_from_sh_compat_tbl()
 	local cmd_tbl = {
 		rg = {
 			grep = "rg --color=always --line-number --smart-case" .. opts.rg,
-			prev = "--preview='bat --color=always "
-				.. opts.bat
-				.. " --highlight-line={2} {1}' --preview-window=~3,+{2}+3/2,up,66%",
+			prev = "bat --color=always " .. opts.bat .. " --highlight-line={2} {1}",
+			prev_window = "~6,+{2}+3/2,up,66%",
 			prompt = "--prompt='rg> '",
-			extra = function(cmd_grep)
-				local lgc = sh.rg_logic
-				local extra_bind = "--bind='ctrl-s:transform:%s "
+			fzf_match = function(cmd_grep)
+				-- fzf match option <ctrl-s>
+				local bind_fzf_match_tmpl = "--bind='ctrl-s:transform:%s "
 					.. [[echo "rebind(change)+change-prompt(rg> )+disable-search+clear-query+reload(%s {q} || true)" %s ]]
 					.. [[echo "unbind(change)+change-prompt(fzf> )+enable-search+clear-query"']]
-				return string.format(extra_bind, lgc.cond, cmd_grep, lgc.op)
+				return string.format(bind_fzf_match_tmpl, sh.rg_prompt.cond, cmd_grep, sh.rg_prompt.op)
 			end,
 		},
 		rga = {
 			grep = "rga --color=always --files-with-matches --smart-case" .. opts.rga,
-			prev = "--preview='rga --context 5 --no-messages --pretty "
-				.. opts.rga_preview
-				.. " {q} {}' --preview-window=up,66%",
+			prev = "rga --context 5 --no-messages --pretty " .. opts.rga_preview .. " {q} {}",
+			prev_window = "up,66%",
 			prompt = "--prompt='rga> '",
 		},
 	}
@@ -149,25 +148,31 @@ local function build_content_search_cmd(search_type, opts)
 		"--layout=reverse",
 		"--no-multi",
 		"--nth=3..",
-		cmd.prev,
+		"--preview-label='content'",
+		string.format("--preview='%s'", cmd.prev),
+		string.format("--preview-window='%s'", cmd.prev_window),
 		cmd.prompt,
 		"--bind='start:reload:" .. cmd.grep .. " {q}'",
 		"--bind='change:reload:sleep 0.1; " .. cmd.grep .. " {q} || true'",
 		"--bind='ctrl-]:change-preview-window(80%|66%)'",
 		"--bind='ctrl-\\:change-preview-window(right|up)'",
 		"--bind='ctrl-r:clear-query+reload:" .. cmd.grep .. " {q} || true'",
+		string.format("--bind 'alt-c:change-preview-label(content)+change-preview:%s'", cmd.prev),
+		string.format("--bind 'alt-m:change-preview-label(metadata)+change-preview(%s)'", eza_preview("meta_rg", opts)),
 		opts.fzf,
 	}
 
-	if cmd.extra then
-		table.insert(fzf_tbl, cmd.extra(cmd.grep))
+	-- fzf match option is only available for `rg`
+	if cmd.fzf_match then
+		table.insert(fzf_tbl, cmd.fzf_match(cmd.grep))
 	end
 
 	return table.concat(fzf_tbl, " ")
 end
 
-local function build_file_search_cmd(search_type, opts)
-	local sh = shell_helper()
+-- fzf with `fd` search
+local function get_fzf_cmd_for_name_search(search_type, opts)
+	local sh = get_helper_from_sh_compat_tbl()
 	local cmd_tbl = {
 		all = sh.wrap("fd --type=d " .. opts.fd .. " {q}; fd --type=f " .. opts.fd .. " {q}"),
 		cwd = sh.wrap(
@@ -186,8 +191,8 @@ local function build_file_search_cmd(search_type, opts)
 	local bat_prev = "bat --color=always " .. opts.bat .. " {}"
 	local default_prev = string.format("test -d {} && %s || %s", sh.wrap(eza_preview("default", opts)), bat_prev)
 
-	-- bind toggle fzf match
-	local bind_match_tmpl = "--bind='ctrl-s:transform:%s "
+	-- fzf match option <ctrl-s>
+	local bind_fzf_match_tmpl = "--bind='ctrl-s:transform:%s "
 		.. [[echo "rebind(change)+change-prompt(fd> )+clear-query+reload:%s" %s ]]
 		.. [[echo "unbind(change)+change-prompt(fzf> )+clear-query"']]
 
@@ -204,9 +209,10 @@ local function build_file_search_cmd(search_type, opts)
 		string.format("--bind='change:reload:sleep 0.1; %s || true'", fd_cmd),
 		"--bind='ctrl-]:change-preview-window(80%|66%)'",
 		"--bind='ctrl-\\:change-preview-window(right|up)'",
+		"--bind='ctrl-r:clear-query+reload:" .. fd_cmd .. " {q}'",
 		string.format("--bind 'alt-c:change-preview-label(content)+change-preview:%s'", default_prev),
-		string.format("--bind 'alt-m:change-preview-label(metadata)+change-preview:%s'", eza_preview("meta", opts)),
-		string.format(bind_match_tmpl, sh.fd_logic.cond, fd_cmd, sh.fd_logic.op),
+		string.format("--bind 'alt-m:change-preview-label(metadata)+change-preview:%s'", eza_preview("meta_fd", opts)),
+		string.format(bind_fzf_match_tmpl, sh.fd_prompt.cond, fd_cmd, sh.fd_prompt.op),
 		opts.fzf,
 	}
 
@@ -215,18 +221,18 @@ end
 
 function M.entry(_, job)
 	local _permit = ya.hide()
-	local custom_opts = get_custom_opts()
+	local custom_opts = get_custom_opts() -- from user setup
 	local cwd = tostring(get_cwd())
 
-	local mode, search_type = job.args[1], job.args[2]
+	local search_type, search_opt = job.args[1], job.args[2]
 	local args
 
-	if mode == "content" then
-		args = build_content_search_cmd(search_type or "rg", custom_opts)
-	elseif mode == "file" then
-		args = build_file_search_cmd(search_type or "all", custom_opts)
+	if search_type == "content" then
+		args = get_fzf_cmd_for_content_search(search_opt or "rg", custom_opts) -- fallback to `rg` search by default
+	elseif search_type == "name" then
+		args = get_fzf_cmd_for_name_search(search_opt or "all", custom_opts) -- fallback to `fd` both dirs and files search
 	else
-		return fail("Invalid mode. Use 'content' or 'file'")
+		return fail("Search argument required. Make sure to pass 'content' or 'name' as the first argument.")
 	end
 
 	if not args then
@@ -262,13 +268,13 @@ function M.entry(_, job)
 
 	local target = output.stdout:gsub("\n$", "")
 	if target ~= "" then
-		if mode == "content" then
+		if search_type == "content" then
 			local colon_pos = string.find(target, ":")
 			local file_url = colon_pos and string.sub(target, 1, colon_pos - 1) or target
 			if file_url then
 				ya.manager_emit("reveal", { file_url })
 			end
-		elseif mode == "file" then
+		elseif search_type == "file" then
 			local is_dir = target:sub(-1) == "/"
 			ya.manager_emit(is_dir and "cd" or "reveal", { target })
 		end
