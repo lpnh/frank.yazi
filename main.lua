@@ -20,11 +20,9 @@ local M = {}
 
 -- utilities
 local shell = os.getenv("SHELL"):match(".*/(.*)")
-local get_cwd = ya.sync(function()
-	return cx.active.current.cwd
-end)
+local get_cwd = ya.sync(function() return cx.active.current.cwd end)
 local fail = function(s, ...)
-	ya.notify({ title = "frank", content = string.format(s, ...), timeout = 5, level = "error" })
+	ya.notify { title = "frank", content = string.format(s, ...), timeout = 5, level = "error" }
 end
 local fmt_opts = function(opt)
 	if type(opt) == "string" then
@@ -38,24 +36,18 @@ end
 -- shell compatibility table
 local sh_compat_tbl = {
 	default = {
-		wrap = function(cmd)
-			return "(" .. cmd .. ")"
-		end,
+		wrap = function(cmd) return "(" .. cmd .. ")" end,
 		rg_prompt = { cond = "[[ ! $FZF_PROMPT =~ rg ]] &&", op = "||" },
 		fd_prompt = { cond = "[[ ! $FZF_PROMPT =~ fd ]] &&", op = "||" },
 	},
 	fish = {
-		wrap = function(cmd)
-			return "begin; " .. cmd .. "; end"
-		end,
+		wrap = function(cmd) return "begin; " .. cmd .. "; end" end,
 		rg_prompt = { cond = 'not string match -q "*rg*" $FZF_PROMPT; and', op = "; or" },
 		fd_prompt = { cond = 'not string match -q "*fd*" $FZF_PROMPT; and', op = "; or" },
 	},
 }
 
-local function get_helper_from_sh_compat_tbl()
-	return sh_compat_tbl[shell] or sh_compat_tbl.default
-end
+local function get_helper_from_sh_compat_tbl() return sh_compat_tbl[shell] or sh_compat_tbl.default end
 
 -- get custom options from setup
 local get_custom_opts = ya.sync(function()
@@ -175,9 +167,7 @@ local function get_fzf_cmd_for_name_search(search_type, opts)
 	local sh = get_helper_from_sh_compat_tbl()
 	local cmd_tbl = {
 		all = sh.wrap("fd --type=d " .. opts.fd .. " {q}; fd --type=f " .. opts.fd .. " {q}"),
-		cwd = sh.wrap(
-			"fd --max-depth=1 --type=d " .. opts.fd .. " {q}; fd --max-depth=1 --type=f " .. opts.fd .. " {q}"
-		),
+		cwd = sh.wrap("fd --max-depth=1 --type=d " .. opts.fd .. " {q}; fd --max-depth=1 --type=f " .. opts.fd .. " {q}"),
 		dir = "fd --type=dir " .. opts.fd .. " {q}",
 		file = "fd --type=file " .. opts.fd .. " {q}",
 	}
@@ -259,7 +249,7 @@ function M.entry(_, job)
 	if output.status.code == 130 then -- interrupted with <ctrl-c> or <esc>
 		return nil
 	elseif output.status.code == 1 then -- no match
-		ya.notify({ title = "frank", content = "No match found", timeout = 5 })
+		ya.notify { title = "frank", content = "No match found", timeout = 5 }
 		return nil
 	elseif output.status.code ~= 0 then -- anything other than normal exit
 		fail("`fzf` exited with error code %s", output.status.code)
