@@ -1,21 +1,5 @@
 --- @since 25.2.7
 
---[[
-{
-  fzf = "",            -- global fzf options
-  -- content search options
-  rg = "",             -- ripgrep options
-  rga = "",            -- ripgrep-all options
-  -- path/filename search options
-  fd = "",             -- fd options
-  -- preview options
-  bat = "",            -- bat options for file preview (rg/fd)
-  eza = "",            -- eza options for directory preview (fd)
-  eza_meta = "",       -- eza metadata options (fd)
-  rga_preview = "",    -- ripgrep-all preview options (rga)
-}
---]]
-
 local M = {}
 
 -- utilities
@@ -46,8 +30,7 @@ local sh_compat_tbl = {
 		fd_prompt = { cond = 'not string match -q "*fd*" $FZF_PROMPT; and', op = "; or" },
 	},
 }
-
-local function get_helper_from_sh_compat_tbl() return sh_compat_tbl[shell] or sh_compat_tbl.default end
+local function get_sh_helper() return sh_compat_tbl[shell] or sh_compat_tbl.default end
 
 -- get custom options from setup
 local get_custom_opts = ya.sync(function()
@@ -55,17 +38,13 @@ local get_custom_opts = ya.sync(function()
 
 	return {
 		fzf = fmt_opts(opts.fzf),
-		bat = fmt_opts(opts.bat),
-
-		-- content search options
 		rg = fmt_opts(opts.rg),
 		rga = fmt_opts(opts.rga),
-		rga_preview = fmt_opts(opts.rga_preview),
-
-		-- file search options
 		fd = fmt_opts(opts.fd),
+		bat = fmt_opts(opts.bat),
 		eza = fmt_opts(opts.eza),
 		eza_meta = fmt_opts(opts.eza_meta),
+		rga_preview = fmt_opts(opts.rga_preview),
 	}
 end)
 
@@ -103,7 +82,7 @@ end
 
 -- fzf with `rg` or `rga` search
 local function get_fzf_cmd_for_content_search(search_type, opts)
-	local sh = get_helper_from_sh_compat_tbl()
+	local sh = get_sh_helper()
 	local cmd_tbl = {
 		rg = {
 			grep = "rg --color=always --line-number --smart-case" .. opts.rg,
@@ -164,7 +143,7 @@ end
 
 -- fzf with `fd` search
 local function get_fzf_cmd_for_name_search(search_type, opts)
-	local sh = get_helper_from_sh_compat_tbl()
+	local sh = get_sh_helper()
 	local cmd_tbl = {
 		all = sh.wrap("fd --type=d " .. opts.fd .. " {q}; fd --type=f " .. opts.fd .. " {q}"),
 		cwd = sh.wrap("fd --max-depth=1 --type=d " .. opts.fd .. " {q}; fd --max-depth=1 --type=f " .. opts.fd .. " {q}"),
@@ -220,13 +199,13 @@ function M.entry(_, job)
 	if search_type == "content" then
 		args = get_fzf_cmd_for_content_search(search_opt or "rg", custom_opts) -- fallback to `rg` search by default
 	elseif search_type == "name" then
-		args = get_fzf_cmd_for_name_search(search_opt or "all", custom_opts) -- fallback to `fd` both dirs and files search
+		args = get_fzf_cmd_for_name_search(search_opt or "all", custom_opts) -- fallback to `fd` "all" search (dirs and files)
 	else
 		return fail("Search argument required. Make sure to pass 'content' or 'name' as the first argument.")
 	end
 
 	if not args then
-		return
+		return -- unreachable?
 	end
 
 	local child, err = Command(shell)
@@ -242,7 +221,7 @@ function M.entry(_, job)
 	end
 
 	local output, err = child:wait_with_output()
-	if not output then
+	if not output then -- unreachable?
 		return fail("Cannot read command output, error code %s", err)
 	end
 
@@ -264,7 +243,7 @@ function M.entry(_, job)
 			if file_url then
 				ya.manager_emit("reveal", { file_url })
 			end
-		elseif search_type == "file" then
+		elseif search_type == "name" then
 			local is_dir = target:sub(-1) == "/"
 			ya.manager_emit(is_dir and "cd" or "reveal", { target })
 		end
