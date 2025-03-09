@@ -1,7 +1,5 @@
 --- @since 25.2.7
 
-local M = {}
-
 -- utilities
 local shell = os.getenv("SHELL"):match(".*/(.*)")
 local get_cwd = ya.sync(function() return cx.active.current.cwd end)
@@ -33,8 +31,8 @@ local sh_compat_tbl = {
 local function get_sh_helper() return sh_compat_tbl[shell] or sh_compat_tbl.default end
 
 -- get custom options from setup
-local get_custom_opts = ya.sync(function()
-	local opts = M.custom_opts or {}
+local get_custom_opts = ya.sync(function(self)
+	local opts = self.custom_opts or {}
 
 	return {
 		fzf = fmt_opts(opts.fzf),
@@ -197,9 +195,10 @@ local function get_fzf_cmd_for_name_search(search_type, opts)
 	return table.concat(fzf_tbl, " ")
 end
 
-function M.entry(_, job)
+local function entry(_, job)
 	local _permit = ya.hide()
 	local custom_opts = get_custom_opts() -- from user setup
+	ya.dbg(custom_opts)
 	local cwd = tostring(get_cwd())
 
 	local search_type, search_opt = job.args[1], job.args[2]
@@ -259,10 +258,10 @@ function M.entry(_, job)
 	end
 end
 
-function M.setup(opts)
+local function setup(self, opts)
 	opts = opts or {}
 
-	M.custom_opts = {
+	self.custom_opts = {
 		fzf = opts.fzf,
 		-- content search options
 		rg = opts.rg,
@@ -277,4 +276,4 @@ function M.setup(opts)
 	}
 end
 
-return M
+return { entry = entry, setup = setup }
