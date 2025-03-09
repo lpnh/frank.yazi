@@ -184,7 +184,7 @@ local function get_fzf_cmd_for_name_search(search_type, opts)
 		string.format("--bind='change:reload:sleep 0.1; %s || true'", fd_cmd),
 		"--bind='ctrl-]:change-preview-window(80%|66%)'",
 		"--bind='ctrl-\\:change-preview-window(right|up)'",
-		"--bind='ctrl-r:clear-query+reload:" .. fd_cmd .. " {q}'",
+		"--bind='ctrl-r:clear-query+reload:" .. fd_cmd .. "'",
 		"--bind='ctrl-o:execute:$EDITOR {1}'",
 		string.format("--bind='alt-c:change-preview-label(content)+change-preview:%s'", default_prev),
 		string.format("--bind='alt-m:change-preview-label(metadata)+change-preview:%s'", eza_preview("meta_fd", opts)),
