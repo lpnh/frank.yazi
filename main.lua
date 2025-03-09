@@ -87,7 +87,7 @@ local function get_fzf_cmd_for_content_search(search_type, opts)
 		rg = {
 			grep = "rg --color=always --line-number --smart-case" .. opts.rg,
 			prev = "bat --color=always " .. opts.bat .. " --highlight-line={2} {1}",
-			prev_window = "~6,+{2}+3/2,up,66%",
+			prev_window = "~3,+{2}+3/2,up,66%",
 			prompt = "--prompt='rg> '",
 			fzf_match = function(cmd_grep)
 				-- fzf match option <ctrl-s>
@@ -114,22 +114,29 @@ local function get_fzf_cmd_for_content_search(search_type, opts)
 	local fzf_tbl = {
 		"fzf",
 		"--ansi",
+		"--no-multi",
+		"--reverse",
 		"--delimiter=:",
 		"--disabled",
-		"--layout=reverse",
-		"--no-multi",
 		"--nth=3..",
+		cmd.prompt,
 		"--preview-label='content'",
 		string.format("--preview='%s'", cmd.prev),
 		string.format("--preview-window='%s'", cmd.prev_window),
-		cmd.prompt,
 		"--bind='start:reload:" .. cmd.grep .. " {q}'",
 		"--bind='change:reload:sleep 0.1; " .. cmd.grep .. " {q} || true'",
 		"--bind='ctrl-]:change-preview-window(80%|66%)'",
 		"--bind='ctrl-\\:change-preview-window(right|up)'",
 		"--bind='ctrl-r:clear-query+reload:" .. cmd.grep .. " {q} || true'",
-		string.format("--bind 'alt-c:change-preview-label(content)+change-preview:%s'", cmd.prev),
-		string.format("--bind 'alt-m:change-preview-label(metadata)+change-preview(%s)'", eza_preview("meta_rg", opts)),
+		"--bind='ctrl-o:execute:$EDITOR {1} +{2}'",
+		string.format(
+			"--bind='alt-c:change-preview-label(content)+change-preview-window(~3,+{2}+3/2,up)+change-preview:%s'",
+			cmd.prev
+		),
+		string.format(
+			"--bind='alt-m:change-preview-label(metadata)+change-preview-window(~6,+{2}+3/2,up)+change-preview(%s)'",
+			eza_preview("meta_rg", opts)
+		),
 		opts.fzf,
 	}
 
@@ -167,11 +174,12 @@ local function get_fzf_cmd_for_name_search(search_type, opts)
 
 	local fzf_tbl = {
 		"fzf",
+		"--ansi",
 		"--no-multi",
-		"--no-sort",
 		"--reverse",
-		"--preview-label='content'",
+		"--no-sort",
 		"--prompt='fd> '",
+		"--preview-label='content'",
 		"--preview-window=up,66%",
 		string.format("--preview='%s'", default_prev),
 		string.format("--bind='start:reload:%s'", fd_cmd),
@@ -179,8 +187,9 @@ local function get_fzf_cmd_for_name_search(search_type, opts)
 		"--bind='ctrl-]:change-preview-window(80%|66%)'",
 		"--bind='ctrl-\\:change-preview-window(right|up)'",
 		"--bind='ctrl-r:clear-query+reload:" .. fd_cmd .. " {q}'",
-		string.format("--bind 'alt-c:change-preview-label(content)+change-preview:%s'", default_prev),
-		string.format("--bind 'alt-m:change-preview-label(metadata)+change-preview:%s'", eza_preview("meta_fd", opts)),
+		"--bind='ctrl-o:execute:$EDITOR {1}'",
+		string.format("--bind='alt-c:change-preview-label(content)+change-preview:%s'", default_prev),
+		string.format("--bind='alt-m:change-preview-label(metadata)+change-preview:%s'", eza_preview("meta_fd", opts)),
 		string.format(bind_fzf_match_tmpl, sh.fd_prompt.cond, fd_cmd, sh.fd_prompt.op),
 		opts.fzf,
 	}
