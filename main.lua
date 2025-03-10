@@ -1,18 +1,9 @@
 --- @since 25.2.7
 
--- utilities
 local shell = os.getenv("SHELL"):match(".*/(.*)")
 local get_cwd = ya.sync(function() return cx.active.current.cwd end)
 local fail = function(s, ...)
 	ya.notify { title = "frank", content = string.format(s, ...), timeout = 5, level = "error" }
-end
-local fmt_opts = function(opt)
-	if type(opt) == "string" then
-		return " " .. opt
-	elseif type(opt) == "table" then
-		return " " .. table.concat(opt, " ")
-	end
-	return ""
 end
 
 -- shell compatibility table
@@ -30,7 +21,15 @@ local sh_compat_tbl = {
 }
 local function get_sh_helper() return sh_compat_tbl[shell] or sh_compat_tbl.default end
 
--- get custom options from setup
+-- get custom options from user setup
+local fmt_opts = function(opt)
+	if type(opt) == "string" then
+		return " " .. opt
+	elseif type(opt) == "table" then
+		return " " .. table.concat(opt, " ")
+	end
+	return ""
+end
 local get_custom_opts = ya.sync(function(self)
 	local opts = self.custom_opts or {}
 
@@ -53,22 +52,20 @@ local function eza_preview(prev_type, opts)
 	local bar_n =
 		[[echo -e "\n\x1b[38;2;148;130;158m────────────────────────────────────────────────────────────────────────────────\x1b[m";]]
 
-	local eza_prev_type = {
+	local dir_or_file_name = {
 		default = [[echo -ne "Dir: \x1b[1m\x1b[38m{}\x1b[m";]],
-		meta_fd = [[test -d {} && echo -ne "Dir: \x1b[1m\x1b[38m{}\x1b[m"]]
-			.. [[ || echo -ne "File: \x1b[1m\x1b[38m{}\x1b[m";]],
-		meta_rg = [[echo -ne "File: \x1b[1m\x1b[38m{]] .. "1" .. [[}\x1b[m";]],
+		meta = [[test -d {1} && echo -ne "Dir: \x1b[1m\x1b[38m{1}\x1b[m"]]
+			.. [[ || echo -ne "File: \x1b[1m\x1b[38m{1}\x1b[m";]],
 	}
 
 	local extra_flags = {
 		default = "--oneline " .. opts.eza,
-		meta_fd = "--git --git-repos --header --long --mounts --no-user --octal-permissions " .. opts.eza_meta,
-		meta_rg = "--git --git-repos --header --long --mounts --no-user --octal-permissions " .. opts.eza_meta,
+		meta = "--git --git-repos --header --long --mounts --no-user --octal-permissions " .. opts.eza_meta,
 	}
 
 	return table.concat({
 		bar,
-		eza_prev_type[prev_type],
+		dir_or_file_name[prev_type],
 		[[test -z "$(eza -A {1})" && echo -ne "  <EMPTY>\n" ||]],
 		bar_n,
 		"eza",
@@ -79,11 +76,12 @@ local function eza_preview(prev_type, opts)
 end
 
 -- fzf with `rg` or `rga` search
-local function get_fzf_cmd_for_content_search(search_type, opts)
+local function build_search_by_content(search_type, opts)
 	local sh = get_sh_helper()
 	local cmd_tbl = {
 		rg = {
 			grep = "rg --color=always --line-number --smart-case" .. opts.rg,
+			-- https://github.com/junegunn/fzf/blob/aefb9a5bc41f92227e4bffa050caca0270b450ba/man/man1/fzf.1#L932-L943
 			prev = "bat --color=always " .. opts.bat .. " --highlight-line={2} {1}",
 			prev_window = "~3,+{2}+3/2,up,66%",
 			prompt = "--prompt='rg> '",
@@ -105,7 +103,7 @@ local function get_fzf_cmd_for_content_search(search_type, opts)
 
 	local cmd = cmd_tbl[search_type]
 	if not cmd then
-		fail("`%s` is not a valid argument for content search. Use `rg` or `rga` instead", search_type)
+		fail("`%s` is not a valid argument for `content` search.\nUse `rg` or `rga` instead", search_type)
 		return nil
 	end
 
@@ -132,8 +130,8 @@ local function get_fzf_cmd_for_content_search(search_type, opts)
 			cmd.prev
 		),
 		string.format(
-			"--bind='alt-m:change-preview-label(metadata)+change-preview-window(~6,+{2}+3/2,up)+change-preview(%s)'",
-			eza_preview("meta_rg", opts)
+			"--bind='alt-m:change-preview-label(metadata)+change-preview-window(~5)+change-preview(%s)'",
+			eza_preview("meta", opts)
 		),
 		opts.fzf,
 	}
@@ -147,7 +145,7 @@ local function get_fzf_cmd_for_content_search(search_type, opts)
 end
 
 -- fzf with `fd` search
-local function get_fzf_cmd_for_name_search(search_type, opts)
+local function build_search_by_name(search_type, opts)
 	local sh = get_sh_helper()
 	local cmd_tbl = {
 		all = sh.wrap("fd --type=d " .. opts.fd .. " {q}; fd --type=f " .. opts.fd .. " {q}"),
@@ -158,7 +156,7 @@ local function get_fzf_cmd_for_name_search(search_type, opts)
 
 	local fd_cmd = cmd_tbl[search_type]
 	if not fd_cmd then
-		fail("`%s` is not a valid argument for file search. Use `all`, `cwd`, `dir` or `file` instead", search_type)
+		fail("`%s` is not a valid argument for `name` search.\nUse `all`, `cwd`, `dir`, or `file` instead", search_type)
 		return nil
 	end
 
@@ -187,7 +185,7 @@ local function get_fzf_cmd_for_name_search(search_type, opts)
 		"--bind='ctrl-r:clear-query+reload:" .. fd_cmd .. "'",
 		"--bind='ctrl-o:execute:$EDITOR {1}'",
 		string.format("--bind='alt-c:change-preview-label(content)+change-preview:%s'", default_prev),
-		string.format("--bind='alt-m:change-preview-label(metadata)+change-preview:%s'", eza_preview("meta_fd", opts)),
+		string.format("--bind='alt-m:change-preview-label(metadata)+change-preview:%s'", eza_preview("meta", opts)),
 		string.format(bind_fzf_match_tmpl, sh.fd_prompt.cond, fd_cmd, sh.fd_prompt.op),
 		opts.fzf,
 	}
@@ -198,22 +196,21 @@ end
 local function entry(_, job)
 	local _permit = ya.hide()
 	local custom_opts = get_custom_opts() -- from user setup
-	ya.dbg(custom_opts)
 	local cwd = tostring(get_cwd())
 
 	local search_type, search_opt = job.args[1], job.args[2]
 	local args
 
 	if search_type == "content" then
-		args = get_fzf_cmd_for_content_search(search_opt or "rg", custom_opts) -- fallback to `rg` search by default
+		args = build_search_by_content(search_opt or "rg", custom_opts) -- fallback to `rg` search
 	elseif search_type == "name" then
-		args = get_fzf_cmd_for_name_search(search_opt or "all", custom_opts) -- fallback to `fd` "all" search (dirs and files)
+		args = build_search_by_name(search_opt or "all", custom_opts) -- fallback to `fd` "all" search (dirs and files)
 	else
-		return fail("Search argument required. Make sure to pass 'content' or 'name' as the first argument.")
+		return fail("Please specify either 'content' or 'name' as the first argument")
 	end
 
 	if not args then
-		return -- unreachable?
+		return -- no valid second argument
 	end
 
 	local child, err = Command(shell)
