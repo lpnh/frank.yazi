@@ -17,17 +17,30 @@ to provide a live search (by name or content) with some preview capabilities
 - [ripgrep](https://github.com/BurntSushi/ripgrep)
 - [ripgrep-all](https://github.com/phiresky/ripgrep-all)
 
-please note that some dependencies may be optional, depending on your usage.
-see the table below for an overview of their roles in each search
+please note that some dependencies are optional, depending on your usage. see
+the tables below for an overview of their roles in both search methods
 
-| tool        | search by content        | search by name                       |
-| ----------- | ------------------------ | ------------------------------------ |
-| bat         | `rg` preview             | file content preview                 |
-| eza         | metadata preview         | directory content preview + metadata |
-| fd          | -                        | `fd` search                          |
-| fzf         | interface + `fzf` match  | interface + `fzf` match              |
-| ripgrep     | `rg` search              | -                                    |
-| ripgrep-all | `rga` search and preview | -                                    |
+### search by content
+
+| tool        | role                                                      |
+| ----------- | --------------------------------------------------------- |
+| bat         | file content preview for the 'rg' option                  |
+| eza         | optional metadata preview for both 'rg' and 'rga' options |
+| fd          | -                                                         |
+| fzf         | main interface + optional `fzf` match for the 'rg' option |
+| ripgrep     | `rg` search for the 'rg' option                           |
+| ripgrep-all | `rga` search + file content preview for the 'rga' option  |
+
+### search by name
+
+| tool        | role                                                      |
+| ----------- | --------------------------------------------------------- |
+| bat         | file content preview                                      |
+| eza         | directory content preview + optional metadata preview     |
+| fd          | `fd` search                                               |
+| fzf         | main interface + optional `fzf` match                     |
+| ripgrep     | -                                                         |
+| ripgrep-all | -                                                         |
 
 ## installation
 
@@ -46,7 +59,7 @@ ya pack -a lpnh/frank
 ### plugin arguments
 
 to avoid ambiguity, this plugin has a two-argument structure, so we can
-differentiate the search method (content vs name) and their respective options
+differentiate the search method (by name vs content) and their respective options
 
 for convenience, you can pass only the first argument and let the plugin fall
 back to a default second argument. this is the "alias" option you'll see below
@@ -81,7 +94,7 @@ desc = "Search file by content (rg)"
 [[manager.prepend_keymap]]
 on = ["f", "d"]
 run = "plugin frank name"
-desc = "Search file and dir by name (fd)"
+desc = "Search by name, files and dirs (fd)"
 ```
 
 #### full config
@@ -102,12 +115,12 @@ desc = "Search file by content (rga)"
 [[manager.prepend_keymap]]
 on = ["f", "a"]
 run = "plugin frank 'name all'"
-desc = "Search file and dir by name"
+desc = "Search by name, files and dirs"
 
 [[manager.prepend_keymap]]
 on = ["f", "c"]
 run = "plugin frank 'name cwd'"
-desc = "Search file and dir by name (CWD)"
+desc = "Search by name, files and dirs (CWD)"
 
 [[manager.prepend_keymap]]
 on = ["f", "d"]
