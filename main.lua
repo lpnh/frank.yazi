@@ -45,17 +45,40 @@ local get_user_opts = ya.sync(function(self)
 	}
 end)
 
-local function eza_preview(prev_type, opts)
-	-- mimic bat grid,header style
-	local bar =
-		[[echo -e "\x1b[38;2;148;130;158m────────────────────────────────────────────────────────────────────────────────\x1b[m";]]
-	local bar_n =
-		[[echo -e "\n\x1b[38;2;148;130;158m────────────────────────────────────────────────────────────────────────────────\x1b[m";]]
-	local dir_or_file_name = {
-		default = [[echo -ne "Dir: \x1b[1m\x1b[38m{}\x1b[m";]],
-		meta = [[test -d {1} && echo -ne "Dir: \x1b[1m\x1b[38m{1}\x1b[m"]]
-			.. [[ || echo -ne "File: \x1b[1m\x1b[38m{1}\x1b[m";]],
+-- mimic bat grid,header style
+local ansi_grid_header = function()
+	local esc = "\x1b["
+	local bold = esc .. "1m"
+	local bar_color = esc .. "38;2;127;132;156m"
+	local ansi_end = esc .. "m"
+
+	local bar = string.format(
+		[[echo -e "%s────────────────────────────────────────────────────────────────────────────────%s";]],
+		bar_color,
+		ansi_end
+	)
+	local bar_n = string.format(
+		[[echo -e "\n%s────────────────────────────────────────────────────────────────────────────────%s";]],
+		bar_color,
+		ansi_end
+	)
+	local label = {
+		default = string.format([[echo -ne "Dir: %s{}%s";]], bold, ansi_end),
+		file = string.format([[echo -e "File: %s{}%s";]], bold, ansi_end),
+		meta = string.format(
+			[[test -d {1} && echo -ne "Dir: %s{1}%s" || echo -ne "File: %s{1}%s";]],
+			bold,
+			ansi_end,
+			bold,
+			ansi_end
+		),
 	}
+
+	return { bar = bar, bar_n = bar_n, label = label }
+end
+
+local function eza_preview(prev_type, opts)
+	local header = ansi_grid_header()
 
 	local extra_flags = {
 		default = "--oneline " .. opts.eza,
@@ -63,14 +86,30 @@ local function eza_preview(prev_type, opts)
 	}
 
 	return table.concat({
-		bar,
-		dir_or_file_name[prev_type],
+		header.bar,
+		header.label[prev_type],
 		[[test -z "$(eza -A {1})" && echo -ne "  <EMPTY>\n" ||]],
-		bar_n,
+		header.bar_n,
 		"eza",
 		extra_flags[prev_type],
 		"--color=always --group-directories-first --icons {1};",
-		bar,
+		header.bar,
+	}, " ")
+end
+
+local rga_preview_with_header = function(user_opts)
+	local header = ansi_grid_header()
+
+	return table.concat({
+		[[test -n {} &&]],
+		header.bar,
+		[[test -n {} &&]],
+		header.label.file,
+		[[test -n {} &&]],
+		header.bar,
+		"rga --context 5 --no-messages --pretty " .. user_opts .. " {q} {};",
+		[[test -n {} &&]],
+		header.bar,
 	}, " ")
 end
 
@@ -131,7 +170,7 @@ local function build_search_by_content(search_type, user_opts)
 		},
 		rga = {
 			grep = "rga --color=always --files-with-matches --smart-case" .. user_opts.rga .. " {q}",
-			prev = "rga --context 5 --no-messages --pretty " .. user_opts.rga_preview .. " {q} {}",
+			prev = rga_preview_with_header(user_opts.rga_preview),
 			prev_window = "up,66%",
 			prompt = "rga> ",
 			specific_options = { "--disabled", "--bind='ctrl-o:execute:$EDITOR {}'" },
