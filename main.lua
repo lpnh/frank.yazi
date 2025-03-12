@@ -144,7 +144,6 @@ local function build_search_by_content(search_type, user_opts)
 	local cmd_tbl = {
 		rg = {
 			grep = "rg --color=always --line-number --smart-case" .. user_opts.rg .. " {q}",
-			-- https://github.com/junegunn/fzf/blob/aefb9a5bc41f92227e4bffa050caca0270b450ba/man/man1/fzf.1#L932-L943
 			prev = "bat --color=always " .. user_opts.bat .. " --highlight-line={2} {1}",
 			prev_window = "~3,+{2}+3/2,up,66%",
 			prompt = "rg> ",
