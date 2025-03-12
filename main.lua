@@ -288,12 +288,9 @@ local function setup(self, opts)
 
 	self.custom_opts = {
 		fzf = opts.fzf,
-		-- content search options
 		rg = opts.rg,
 		rga = opts.rga,
-		-- path/filename search options
 		fd = opts.fd,
-		-- preview options
 		bat = opts.bat,
 		eza = opts.eza,
 		eza_meta = opts.eza_meta,
