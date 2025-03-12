@@ -133,8 +133,7 @@ local function build_from_fzf_base(search_cmd, preview_cmd, preview_window, prom
 		table.insert(base_tbl, option)
 	end
 
-	-- add `fzf` custom options from user setup
-	table.insert(base_tbl, user_opts.fzf)
+	table.insert(base_tbl, user_opts.fzf) -- user `fzf` options at the end
 
 	return base_tbl
 end
@@ -151,7 +150,6 @@ local function build_search_by_content(search_type, user_opts)
 			prompt = "rg> ",
 			specific_options = { "--disabled", "--bind='ctrl-o:execute:$EDITOR {1} +{2}'", "--delimiter=:", "--nth=3.." },
 			fzf_match = function(cmd_grep)
-				-- fzf match option <ctrl-s>
 				local bind_fzf_match_tmpl = "--bind='ctrl-s:transform:%s "
 					.. [[echo "rebind(change)+change-prompt(rg> )+disable-search+clear-query+reload:%s || true" %s ]]
 					.. [[echo "unbind(change)+change-prompt(fzf> )+enable-search+clear-query"']]
@@ -173,9 +171,8 @@ local function build_search_by_content(search_type, user_opts)
 		return nil
 	end
 
-	-- add `fzf` match option for `rg`
 	if cmd.fzf_match then
-		table.insert(cmd.specific_options, cmd.fzf_match(cmd.grep))
+		table.insert(cmd.specific_options, cmd.fzf_match(cmd.grep)) -- `fzf` match for `rg`
 	end
 
 	local fzf_tbl = build_from_fzf_base(cmd.grep, cmd.prev, cmd.prev_window, cmd.prompt, user_opts, cmd.specific_options)
