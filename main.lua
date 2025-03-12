@@ -45,36 +45,33 @@ local get_user_opts = ya.sync(function(self)
 	}
 end)
 
--- mimic bat grid,header style
+-- mimic `bat` grid,header style
 local ansi_grid_header = function()
-	local esc = "\x1b["
-	local bold = esc .. "1m"
-	local bar_color = esc .. "38;2;127;132;156m"
-	local ansi_end = esc .. "m"
+	-- ANSI
+	local bold = "\x1b[1m"
+	local bar_color = "\x1b[38;2;127;132;156m"
+	local reset = "\x1b[m"
 
-	local bar = string.format(
-		[[echo -e "%s────────────────────────────────────────────────────────────────────────────────%s";]],
-		bar_color,
-		ansi_end
-	)
-	local bar_n = string.format(
-		[[echo -e "\n%s────────────────────────────────────────────────────────────────────────────────%s";]],
-		bar_color,
-		ansi_end
-	)
+	local bar_line = string.rep("─", 80)
+	local colored_bar = bar_color .. bar_line .. reset
+
 	local label = {
-		default = string.format([[echo -ne "Dir: %s{}%s";]], bold, ansi_end),
-		file = string.format([[echo -e "File: %s{}%s";]], bold, ansi_end),
+		default = string.format([[echo -ne "Dir: %s{}%s";]], bold, reset),
+		file = string.format([[echo -e "File: %s{}%s";]], bold, reset),
 		meta = string.format(
 			[[test -d {1} && echo -ne "Dir: %s{1}%s" || echo -ne "File: %s{1}%s";]],
 			bold,
-			ansi_end,
+			reset,
 			bold,
-			ansi_end
+			reset
 		),
 	}
 
-	return { bar = bar, bar_n = bar_n, label = label }
+	return {
+		bar = string.format([[echo -e "%s";]], colored_bar),
+		bar_with_new_line = string.format([[echo -e "\n%s";]], colored_bar),
+		label = label,
+	}
 end
 
 local function eza_preview(prev_type, opts)
@@ -88,11 +85,8 @@ local function eza_preview(prev_type, opts)
 	return table.concat({
 		header.bar,
 		header.label[prev_type],
-		[[test -z "$(eza -A {1})" && echo -ne "  <EMPTY>\n" ||]],
-		header.bar_n,
-		"eza",
-		extra_flags[prev_type],
-		"--color=always --group-directories-first --icons {1};",
+		[[test -z "$(eza -A {1})" && echo -e "  <EMPTY>" || ]] .. header.bar_with_new_line,
+		"eza " .. extra_flags[prev_type] .. " --color=always --group-directories-first --icons {1};",
 		header.bar,
 	}, " ")
 end
@@ -101,15 +95,11 @@ local rga_preview_with_header = function(user_opts)
 	local header = ansi_grid_header()
 
 	return table.concat({
-		[[test -n {} &&]],
-		header.bar,
-		[[test -n {} &&]],
-		header.label.file,
-		[[test -n {} &&]],
-		header.bar,
+		[[test -n {} && ]] .. header.bar,
+		[[test -n {} && ]] .. header.label.file,
+		[[test -n {} && ]] .. header.bar,
 		"rga --context 5 --no-messages --pretty " .. user_opts .. " {q} {};",
-		[[test -n {} &&]],
-		header.bar,
+		[[test -n {} && ]] .. header.bar,
 	}, " ")
 end
 
