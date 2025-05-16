@@ -1,8 +1,5 @@
 # frank
 
-> [!NOTE]
-> this plugin is only guaranteed to be compatible with Yazi nightly
-
 a Yazi plugin that stitches `fzf`, `fd`, `rg`, `rga`, `bat`, and `eza` together
 to provide a live search (by name or content) with some preview capabilities
 
