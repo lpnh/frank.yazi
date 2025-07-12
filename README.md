@@ -42,7 +42,7 @@ the tables below for an overview of their roles in both search methods
 ## installation
 
 ```sh
-ya pack -a lpnh/frank
+ya pkg add lpnh/frank
 ```
 
 ## usage
