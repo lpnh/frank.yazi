@@ -83,12 +83,12 @@ below is an example of how to configure both searches in the
 `~/.config/yazi/keymap.toml` file, using only the aliases:
 
 ```toml
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on = ["f", "r"]
 run = "plugin frank content"
 desc = "Search file by content (rg)"
 
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on = ["f", "d"]
 run = "plugin frank name"
 desc = "Search by name, files and dirs (fd)"
@@ -99,32 +99,32 @@ desc = "Search by name, files and dirs (fd)"
 below is an example how to configure all the available options:
 
 ```toml
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on = ["f", "r"]
 run = "plugin frank 'content rg'"
 desc = "Search file by content (rg)"
 
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on = ["f", "A"]
 run = "plugin frank 'content rga'"
 desc = "Search file by content (rga)"
 
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on = ["f", "a"]
 run = "plugin frank 'name all'"
 desc = "Search by name, files and dirs"
 
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on = ["f", "c"]
 run = "plugin frank 'name cwd'"
 desc = "Search by name, files and dirs (CWD)"
 
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on = ["f", "d"]
 run = "plugin frank 'name dir'"
 desc = "Search directory by name"
 
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on = ["f", "f"]
 run = "plugin frank 'name file'"
 desc = "Search file by name"
