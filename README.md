@@ -134,13 +134,12 @@ desc = "Search file by name"
 
 this plugin provides the following custom `fzf` keybindings:
 
+- `alt-p`: toggle the preview ("content", "metadata")
 - `ctrl-o`: open selected entry with default editor (`$EDITOR`)
 - `ctrl-r`: reload the search
 - `ctrl-s`: toggle `fzf` match for the current query results
 - `ctrl-]`: toggle the preview window size (66%, 80%)
 - `ctrl-\`: toggle the preview window position (top, right)
-- `alt-m`: switch the preview to "metadata"
-- `alt-c`: switch the preview back to "content" (default)
 
 ## customization
 

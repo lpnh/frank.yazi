@@ -10,13 +10,15 @@ end
 local sh_compat_tbl = {
 	default = {
 		wrap = function(cmd) return "(" .. cmd .. ")" end,
-		rg_prompt = { cond = "[[ ! $FZF_PROMPT =~ rg ]] &&", op = "||" },
-		fd_prompt = { cond = "[[ ! $FZF_PROMPT =~ fd ]] &&", op = "||" },
+		prompt = function(s) return string.format("[[ ! $FZF_PROMPT =~ %s ]] &&", s) end,
+		prev = function(s) return string.format("[[ $FZF_PREVIEW_LABEL =~ %s ]] &&", s) end,
+		op = "||",
 	},
 	fish = {
 		wrap = function(cmd) return "begin; " .. cmd .. "; end" end,
-		rg_prompt = { cond = 'not string match -q "*rg*" $FZF_PROMPT; and', op = "; or" },
-		fd_prompt = { cond = 'not string match -q "*fd*" $FZF_PROMPT; and', op = "; or" },
+		prompt = function(s) return string.format([[not string match -q "*%s*" $FZF_PROMPT; and]], s) end,
+		prev = function(s) return string.format([[string match -q "*%s*" $FZF_PREVIEW_LABEL; and]], s) end,
+		op = "; or",
 	},
 }
 local function get_sh_helper() return sh_compat_tbl[shell] or sh_compat_tbl.default end
@@ -56,10 +58,10 @@ local ansi_grid_header = function()
 	local colored_bar = bar_color .. bar_line .. reset
 
 	local label = {
-		default = string.format([[echo -ne "Dir: %s{}%s";]], bold, reset),
-		file = string.format([[echo -e "File: %s{}%s";]], bold, reset),
+		default = string.format([[echo -ne "Dir: %s\{}%s";]], bold, reset),
+		file = string.format([[echo -e "File: %s\{}%s";]], bold, reset),
 		meta = string.format(
-			[[test -d {1} && echo -ne "Dir: %s{1}%s" || echo -ne "File: %s{1}%s";]],
+			[[test -d \{1} && echo -ne "Dir: %s\{1}%s" || echo -ne "File: %s\{1}%s";]],
 			bold,
 			reset,
 			bold,
@@ -85,48 +87,52 @@ local function eza_preview(prev_type, opts)
 	return table.concat({
 		header.bar,
 		header.label[prev_type],
-		[[test -z "$(eza -A {1})" && echo -e "  <EMPTY>" || ]] .. header.bar_with_new_line,
-		"eza " .. extra_flags[prev_type] .. " --color=always --group-directories-first --icons {1};",
+		[[test -z "$(eza -A \{1})" && echo -e "  <EMPTY>" || ]] .. header.bar_with_new_line,
+		string.format([[eza %s --all --color=always --group-directories-first --icons \{1};]], extra_flags[prev_type]),
 		header.bar,
 	}, " ")
 end
 
 local rga_preview_with_header = function(user_opts)
+	local sh = get_sh_helper()
 	local header = ansi_grid_header()
 
-	return table.concat({
-		[[test -n {} && ]] .. header.bar,
-		[[test -n {} && ]] .. header.label.file,
-		[[test -n {} && ]] .. header.bar,
-		"rga --context 5 --no-messages --pretty " .. user_opts .. " {q} {};",
-		[[test -n {} && ]] .. header.bar,
-	}, " ")
+	return [[test -n \{} && ]]
+		.. sh.wrap(table.concat({
+			header.bar,
+			header.label.file,
+			header.bar,
+			"rga --context 5 --no-messages --pretty " .. user_opts .. [[ \{q} \{};]],
+			header.bar,
+		}, " "))
 end
 
 -- common `fzf` base cmd
 local function build_from_fzf_base(search_cmd, preview_cmd, preview_window, prompt, user_opts, specific_options)
+	local sh = get_sh_helper()
+	local toggle_preview = string.format(
+		[[%s echo '\''change-preview-label(metadata)+change-preview-window(~5)+change-preview:%s'\'' %s ]]
+			.. [[echo '\''change-preview-label(content)+change-preview-window(~3)+change-preview:%s'\'']],
+		sh.prev("content"),
+		eza_preview("meta", user_opts),
+		sh.op,
+		preview_cmd
+	)
+
 	local base_tbl = {
 		"fzf",
 		"--ansi",
 		"--no-multi",
 		"--reverse",
-		"--preview-label='content'",
-		string.format("--bind='start:reload:%s'", search_cmd),
+		string.format("--bind='start:reload(%s)+transform:%s'", search_cmd, toggle_preview),
 		string.format("--bind='change:reload:sleep 0.1; %s || true'", search_cmd),
 		string.format("--bind='ctrl-r:clear-query+reload:%s || true'", search_cmd),
 		string.format("--prompt='%s'", prompt),
-		string.format("--preview='%s'", preview_cmd),
+		string.format("--preview='echo loading'"),
 		string.format("--preview-window='%s'", preview_window),
 		"--bind='ctrl-]:change-preview-window(80%|66%)'",
 		"--bind='ctrl-\\:change-preview-window(right|up)'",
-		string.format(
-			"--bind='alt-c:change-preview-label(content)+change-preview-window(~3)+change-preview:%s'",
-			preview_cmd
-		),
-		string.format(
-			"--bind='alt-m:change-preview-label(metadata)+change-preview-window(~5)+change-preview(%s)'",
-			eza_preview("meta", user_opts)
-		),
+		string.format([[--bind 'alt-p:transform:%s']], toggle_preview),
 	}
 
 	for _, option in ipairs(specific_options) do
@@ -144,7 +150,7 @@ local function build_search_by_content(search_type, user_opts)
 	local cmd_tbl = {
 		rg = {
 			grep = "rg --color=always --line-number --smart-case" .. user_opts.rg .. " {q}",
-			prev = "bat --color=always " .. user_opts.bat .. " --highlight-line={2} {1}",
+			prev = string.format([[bat --color=always %s --highlight-line=\{2} \{1}]], user_opts.bat),
 			prev_window = "~3,+{2}+3/2,up,66%",
 			prompt = "rg> ",
 			specific_options = { "--disabled", "--bind='ctrl-o:execute:$EDITOR {1} +{2}'", "--delimiter=:", "--nth=3.." },
@@ -152,7 +158,7 @@ local function build_search_by_content(search_type, user_opts)
 				local bind_fzf_match_tmpl = "--bind='ctrl-s:transform:%s "
 					.. [[echo "rebind(change)+change-prompt(rg> )+disable-search+clear-query+reload:%s || true" %s ]]
 					.. [[echo "unbind(change)+change-prompt(fzf> )+enable-search+clear-query"']]
-				return string.format(bind_fzf_match_tmpl, sh.rg_prompt.cond, cmd_grep, sh.rg_prompt.op)
+				return string.format(bind_fzf_match_tmpl, sh.prompt("rg"), cmd_grep, sh.op)
 			end,
 		},
 		rga = {
@@ -197,8 +203,8 @@ local function build_search_by_name(search_type, user_opts)
 		return nil
 	end
 
-	local bat_prev = "bat --color=always " .. user_opts.bat .. " {}"
-	local default_prev = string.format("test -d {} && %s || %s", sh.wrap(eza_preview("default", user_opts)), bat_prev)
+	local bat_prev = string.format([[bat --color=always %s \{}]], user_opts.bat)
+	local default_prev = string.format([[test -d \{} && %s || %s]], sh.wrap(eza_preview("default", user_opts)), bat_prev)
 
 	local specific_options = {
 		"--bind='ctrl-o:execute:$EDITOR {1}'",
@@ -206,9 +212,9 @@ local function build_search_by_name(search_type, user_opts)
 			"--bind='ctrl-s:transform:%s "
 				.. [[echo "rebind(change)+change-prompt(fd> )+clear-query+reload:%s" %s ]]
 				.. [[echo "unbind(change)+change-prompt(fzf> )+clear-query"']],
-			sh.fd_prompt.cond,
+			sh.prompt("fd"),
 			fd_cmd,
-			sh.fd_prompt.op
+			sh.op
 		),
 	}
 
