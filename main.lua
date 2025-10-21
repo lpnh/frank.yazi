@@ -224,7 +224,9 @@ local function build_search_by_name(search_type, user_opts)
 end
 
 local function entry(_, job)
-	local _permit = ya.hide()
+	-- TODO: remove fallback after next stable release
+	local _permit = ui.hide and ui.hide() or ya.hide()
+
 	local user_opts = get_user_opts() -- from user setup
 	local cwd = tostring(get_cwd())
 
@@ -276,11 +278,11 @@ local function entry(_, job)
 			local colon_pos = string.find(target, ":")
 			local file_url = colon_pos and string.sub(target, 1, colon_pos - 1) or target
 			if file_url then
-				ya.manager_emit("reveal", { file_url })
+				ya.emit("reveal", { file_url })
 			end
 		elseif search_type == "name" then
 			local is_dir = target:sub(-1) == "/"
-			ya.manager_emit(is_dir and "cd" or "reveal", { target })
+			ya.emit(is_dir and "cd" or "reveal", { target })
 		end
 	end
 end
