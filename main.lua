@@ -1,4 +1,6 @@
---- @since 25.5.31
+--- @since 25.9.15
+
+local M = {}
 
 local shell = os.getenv("SHELL"):match(".*/(.*)")
 local get_cwd = ya.sync(function() return cx.active.current.cwd end)
@@ -32,8 +34,8 @@ local fmt_opts = function(opt)
 	end
 	return ""
 end
-local get_user_opts = ya.sync(function(self)
-	local opts = self.custom_opts or {}
+local get_user_opts = ya.sync(function(state)
+	local opts = state.custom_opts or {}
 
 	return {
 		fzf = fmt_opts(opts.fzf),
@@ -223,12 +225,11 @@ local function build_search_by_name(search_type, user_opts)
 	return table.concat(fzf_tbl, " ")
 end
 
-local function entry(_, job)
-	-- TODO: remove fallback after next stable release
-	local _permit = ui.hide and ui.hide() or ya.hide()
+function M:entry(job)
+	local _permit = ui.hide()
 
-	local user_opts = get_user_opts() -- from user setup
-	local cwd = tostring(get_cwd())
+	local user_opts = get_user_opts()
+	local cwd = get_cwd()
 
 	local search_type, search_opt = job.args[1], job.args[2]
 	local args
@@ -247,19 +248,19 @@ local function entry(_, job)
 
 	local child, err = Command(shell)
 		:arg({ "-c", args })
-		:cwd(cwd)
+		:cwd(tostring(cwd))
 		:stdin(Command.INHERIT)
 		:stdout(Command.PIPED)
 		:stderr(Command.INHERIT)
 		:spawn()
 
 	if not child then
-		return fail("Command failed with error code %s", err)
+		return fail("Failed to spawn shell, error: %s", err)
 	end
 
 	local output, err = child:wait_with_output()
-	if not output then -- unreachable?
-		return fail("Cannot read command output, error code %s", err)
+	if not output then
+		return fail("Cannot read command output, error: %s", err)
 	end
 
 	if output.status.code == 130 then -- interrupted with <ctrl-c> or <esc>
@@ -276,21 +277,27 @@ local function entry(_, job)
 	if target ~= "" then
 		if search_type == "content" then
 			local colon_pos = string.find(target, ":")
-			local file_url = colon_pos and string.sub(target, 1, colon_pos - 1) or target
-			if file_url then
-				ya.emit("reveal", { file_url })
+			local file_path = colon_pos and string.sub(target, 1, colon_pos - 1) or target
+			local url = Url(file_path)
+			if not url.is_absolute then
+				url = cwd:join(url)
 			end
+			ya.emit("reveal", { url })
 		elseif search_type == "name" then
 			local is_dir = target:sub(-1) == "/"
-			ya.emit(is_dir and "cd" or "reveal", { target })
+			local url = Url(target)
+			if not url.is_absolute then
+				url = cwd:join(url)
+			end
+			ya.emit(is_dir and "cd" or "reveal", { url })
 		end
 	end
 end
 
-local function setup(self, opts)
+function M:setup(state, opts)
 	opts = opts or {}
 
-	self.custom_opts = {
+	state.custom_opts = {
 		fzf = opts.fzf,
 		rg = opts.rg,
 		rga = opts.rga,
@@ -302,4 +309,4 @@ local function setup(self, opts)
 	}
 end
 
-return { entry = entry, setup = setup }
+return M
