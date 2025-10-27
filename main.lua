@@ -205,7 +205,7 @@ local function build_search_by_name(search_type, user_opts)
 		return nil
 	end
 
-	local bat_prev = string.format([[bat --color=always %s \{}]], user_opts.bat)
+	local bat_prev = string.format([[bat --color=always --style=grid,header %s \{}]], user_opts.bat)
 	local default_prev = string.format([[test -d \{} && %s || %s]], sh.wrap(eza_preview("default", user_opts)), bat_prev)
 
 	local specific_options = {
