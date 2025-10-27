@@ -225,7 +225,7 @@ local function build_search_by_name(search_type, user_opts)
 	return table.concat(fzf_tbl, " ")
 end
 
-function M:entry(job)
+local function entry(_, job)
 	local _permit = ui.hide()
 
 	local user_opts = get_user_opts()
@@ -294,10 +294,10 @@ function M:entry(job)
 	end
 end
 
-function M:setup(state, opts)
+local function setup(self, opts)
 	opts = opts or {}
 
-	state.custom_opts = {
+	self.custom_opts = {
 		fzf = opts.fzf,
 		rg = opts.rg,
 		rga = opts.rga,
@@ -309,4 +309,4 @@ function M:setup(state, opts)
 	}
 end
 
-return M
+return { entry = entry, setup = setup }
