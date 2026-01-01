@@ -1,4 +1,4 @@
---- @since 25.9.15
+--- @since 25.12.29
 
 local shell = os.getenv("SHELL"):match(".*/(.*)")
 local get_cwd = ya.sync(function() return cx.active.current.cwd end)
