@@ -1,7 +1,5 @@
 --- @since 25.9.15
 
-local M = {}
-
 local shell = os.getenv("SHELL"):match(".*/(.*)")
 local get_cwd = ya.sync(function() return cx.active.current.cwd end)
 local fail = function(s, ...)
@@ -294,10 +292,10 @@ local function entry(_, job)
 	end
 end
 
-local function setup(self, opts)
+local function setup(state, opts)
 	opts = opts or {}
 
-	self.custom_opts = {
+	state.custom_opts = {
 		fzf = opts.fzf,
 		rg = opts.rg,
 		rga = opts.rga,
