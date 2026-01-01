@@ -3,7 +3,7 @@
 a Yazi plugin that stitches `fzf`, `fd`, `rg`, `rga`, `bat`, and `eza` together
 to provide a live search (by name or content) with some preview capabilities
 
-**supports**: `bash`, `fish`, and `zsh`
+**supported shells**: `bash`, `fish`, and `zsh`
 
 ## dependencies
 
@@ -14,30 +14,8 @@ to provide a live search (by name or content) with some preview capabilities
 - [ripgrep](https://github.com/BurntSushi/ripgrep)
 - [ripgrep-all](https://github.com/phiresky/ripgrep-all)
 
-please note that some dependencies are optional, depending on your usage. see
-the tables below for an overview of their roles in both search methods
-
-### search by content
-
-| tool        | role                                                      |
-| ----------- | --------------------------------------------------------- |
-| bat         | file content preview for the 'rg' option                  |
-| eza         | optional metadata preview for both 'rg' and 'rga' options |
-| fd          | -                                                         |
-| fzf         | main interface + optional `fzf` match for the 'rg' option |
-| ripgrep     | `rg` search for the 'rg' option                           |
-| ripgrep-all | `rga` search + file content preview for the 'rga' option  |
-
-### search by name
-
-| tool        | role                                                      |
-| ----------- | --------------------------------------------------------- |
-| bat         | file content preview                                      |
-| eza         | directory content preview + optional metadata preview     |
-| fd          | `fd` search                                               |
-| fzf         | main interface + optional `fzf` match                     |
-| ripgrep     | -                                                         |
-| ripgrep-all | -                                                         |
+note that `fzf` is required for the interface, while other dependencies are
+optional depending on your usage (see tables below)
 
 ## installation
 
@@ -74,6 +52,43 @@ back to a default second argument. this is the "alias" option you'll see below
 - `name cwd`: search files and directories in the current directory
 - `name dir`: search directories only
 - `name file`: search files only
+
+### dependencies by usage
+
+the tables below show what dependencies are required for each usage
+
+#### search engine
+
+| tool        | plugin option                                   |
+| ----------- | ----------------------------------------------- |
+| ripgrep     | `content rg`                                    |
+| ripgrep-all | `content rga`                                   |
+| fd          | `name all`, `name cwd`, `name dir`, `name file` |
+
+#### file content preview
+
+| tool        | plugin option                                     |
+| ----------- | ------------------------------------------------- |
+| bat         | `content rg`, `name all`, `name cwd`, `name file` |
+| ripgrep-all | `content rga`                                     |
+
+#### directory content preview
+
+| tool        | plugin option                      |
+| ----------- | ---------------------------------- |
+| eza         | `name all`, `name cwd`, `name dir` |
+
+#### file metadata preview
+
+| tool        | plugin option                            |
+| ----------- | ---------------------------------------- |
+| eza         | `content rg`, `content rga`, `name file` |
+
+#### directory metadata preview
+
+| tool        | plugin option                      |
+| ----------- | ---------------------------------- |
+| eza         | `name all`, `name cwd`, `name dir` |
 
 ### keymaps
 
@@ -129,6 +144,10 @@ on = ["f", "f"]
 run = "plugin frank 'name file'"
 desc = "Search file by name"
 ```
+
+**important**: before using the examples above, ensure the keybindings don't
+conflict with your other commands/plugins. the descriptions can also be changed
+to your preference
 
 ### fzf binds
 
@@ -214,14 +233,18 @@ require("frank"):setup {
     "'!.ipynb_checkpoints'",
   },
   fd = "--hidden",
-  bat = "--style 'header,grid'",
+  bat = "",
   eza = "",
   eza_meta = "--total-size",
   rga_preview = {
-    "--colors 'line:fg:red'"
-    .. " --colors 'match:fg:blue'"
-    .. " --colors 'match:bg:black'"
-    .. " --colors 'match:style:nobold'",
+    "--colors 'column:fg:black'"
+      .. " --colors 'line:fg:black'"
+      .. " --colors 'match:fg:black'"
+      .. " --colors 'match:bg:blue'"
+      .. " --colors 'match:style:nobold'"
+      .. [[ --context-separator=" "]]
+      .. [[ --field-context-separator=" "]]
+      .. [[ --field-match-separator=" "]],
   },
 }
 ```
