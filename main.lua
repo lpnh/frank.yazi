@@ -44,6 +44,7 @@ local get_user_opts = ya.sync(function(state)
 		eza = fmt_opts(opts.eza),
 		eza_meta = fmt_opts(opts.eza_meta),
 		rga_preview = fmt_opts(opts.rga_preview),
+		img_preview = opts.img_preview,
 	}
 end)
 
@@ -105,6 +106,18 @@ local rga_preview_with_header = function(user_opts)
 			"rga --context 5 --no-messages --pretty " .. user_opts .. [[ \{q} \{};]],
 			header.bar,
 		}, " "))
+end
+
+local function img_preview_with_header(cmd)
+	local header = ansi_grid_header()
+
+	return table.concat({
+		header.bar,
+		header.label.file,
+		header.bar,
+		cmd .. [[ \{};]],
+		header.bar,
+	}, " ")
 end
 
 -- common `fzf` base cmd
@@ -204,7 +217,11 @@ local function build_search_by_name(search_type, user_opts)
 	end
 
 	local bat_prev = string.format([[bat --color=always --style=grid,header %s \{}]], user_opts.bat)
-	local default_prev = string.format([[test -d \{} && %s || %s]], sh.wrap(eza_preview("default", user_opts)), bat_prev)
+	local img_cmd = user_opts.img_preview and img_preview_with_header(user_opts.img_preview) or bat_prev
+	local file_prev =
+		string.format([[file --mime-type -b \{} | grep -q "^image/" && %s || %s]], sh.wrap(img_cmd), bat_prev)
+	local default_prev =
+		string.format([[test -d \{} && %s || %s]], sh.wrap(eza_preview("default", user_opts)), sh.wrap(file_prev))
 
 	local specific_options = {
 		"--bind='ctrl-o:execute:$EDITOR {1}'",
@@ -304,6 +321,7 @@ local function setup(state, opts)
 		eza = opts.eza,
 		eza_meta = opts.eza_meta,
 		rga_preview = opts.rga_preview,
+		img_preview = opts.img_preview,
 	}
 end
 
