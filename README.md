@@ -203,11 +203,13 @@ require("frank"):setup({
   eza = "",            -- eza options for directory preview (fd)
   eza_meta = "",       -- eza metadata options (rg,rga,fd)
   rga_preview = "",    -- ripgrep-all preview options (rga)
+  -- extra preview command
+  img_preview = "",    -- image preview command (fd)
 })
 ```
 
 all fields are optional and accept either a string or a table of strings
-containing command-line options
+containing command-line options, except `img_preview` which expects a command
 
 example:
 
@@ -246,8 +248,32 @@ require("frank"):setup {
       .. [[ --field-context-separator=" "]]
       .. [[ --field-match-separator=" "]],
   },
+  img_preview = "chafa --size=60x20",
 }
 ```
 
-almost everything from interface elements to search filters can be customized —
+### extra previews
+
+#### image (`search by name` only)
+
+the `img_preview` field takes a command that will replace the default file
+preview (`bat`) for image files
+
+note that image rendering in terminals can be a little tricky. before using
+this feature, make sure your current environment supports it and the command is
+correct and well set.
+
+`fzf` exposes `$FZF_PREVIEW_COLUMNS` and `$FZF_PREVIEW_LINES` environment
+variables which can be used to set the output image dimensions
+
+so, using [chafa](https://hpjansson.org/chafa/), for example, the command would
+look like: `chafa --size=${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES}`. for
+`fish`: `--size=$FZF_PREVIEW_COLUMNS"x"$FZF_PREVIEW_LINES`
+
+**hint**: `ctrl-]` and `ctrl-\` keybinds can be used to toggle the preview
+window size and position, respectively
+
+---
+
+almost everything from interface elements to search filters can be customized,
 you just need to find the right flag
