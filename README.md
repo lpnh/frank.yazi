@@ -15,7 +15,7 @@ to provide a live search (by name or content) with some preview capabilities
 - [ripgrep-all](https://github.com/phiresky/ripgrep-all)
 
 note that `fzf` is required for the interface, while other dependencies are
-optional depending on your usage (see tables below)
+optional depending on your usage (see "dependencies by usage" section below)
 
 ## installation
 
@@ -34,10 +34,12 @@ ya pkg add lpnh/frank
 ### plugin arguments
 
 to avoid ambiguity, this plugin has a two-argument structure, so we can
-differentiate the search method (by name vs content) and their respective options
+differentiate the search method (by name vs content) and their respective
+options
 
 for convenience, you can pass only the first argument and let the plugin fall
-back to a default second argument. this is the "alias" option you'll see below
+back to a default second argument. these single-argument forms are the
+`content` and `name` aliases listed below
 
 #### search by content
 
@@ -146,8 +148,7 @@ desc = "Search file by name"
 ```
 
 **important**: before using the examples above, ensure the keybindings don't
-conflict with your other commands/plugins. the descriptions can also be changed
-to your preference
+conflict with your other commands/plugins. feel free to adjust the descriptions
 
 ### fzf binds
 
@@ -156,7 +157,7 @@ this plugin provides the following custom `fzf` keybindings:
 - `alt-p`: toggle the preview ("content", "metadata")
 - `ctrl-o`: open selected entry with default editor (`$EDITOR`)
 - `ctrl-r`: reload the search
-- `ctrl-s`: toggle `fzf` match for the current query results
+- `ctrl-s`: toggle between fuzzy and exact match for the current query results
 - `ctrl-]`: toggle the preview window size (66%, 80%)
 - `ctrl-\`: toggle the preview window position (top, right)
 
@@ -187,7 +188,7 @@ for more details, see
 
 for those seeking further customization, you can tweak all the integrated tools
 used by this plugin in your `~/.config/yazi/init.lua` file. simply pass a table
-to the `setup` function with any of the following fields and their respectives
+to the `setup` function with any of the following fields and their respective
 options:
 
 ```lua
@@ -209,7 +210,8 @@ require("frank"):setup({
 ```
 
 all fields are optional and accept either a string or a table of strings
-containing command-line options, except `img_preview` which expects a command
+containing command-line options, except `img_preview`, which expects a full
+command rather than option flags
 
 example:
 
@@ -261,19 +263,19 @@ preview (`bat`) for image files
 
 note that image rendering in terminals can be a little tricky. before using
 this feature, make sure your current environment supports it and the command is
-correct and well set.
+correct and properly configured.
 
 `fzf` exposes `$FZF_PREVIEW_COLUMNS` and `$FZF_PREVIEW_LINES` environment
 variables which can be used to set the output image dimensions
 
 so, using [chafa](https://hpjansson.org/chafa/), for example, the command would
 look like: `chafa --size=${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES}`. for
-`fish`: `--size=$FZF_PREVIEW_COLUMNS"x"$FZF_PREVIEW_LINES`
+`fish`, it becomes: `chafa --size=$FZF_PREVIEW_COLUMNS"x"$FZF_PREVIEW_LINES`
 
 **hint**: `ctrl-]` and `ctrl-\` keybinds can be used to toggle the preview
 window size and position, respectively
 
 ---
 
-almost everything from interface elements to search filters can be customized,
+almost everything from interface elements to search filters can be customized.
 you just need to find the right flag
