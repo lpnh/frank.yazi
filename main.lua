@@ -12,12 +12,14 @@ local sh_compat_tbl = {
 		wrap = function(cmd) return "(" .. cmd .. ")" end,
 		prompt = function(s) return string.format("[[ ! $FZF_PROMPT =~ %s ]] &&", s) end,
 		prev = function(s) return string.format("[[ $FZF_PREVIEW_LABEL =~ %s ]] &&", s) end,
+		mime_check = function(s) return string.format([=[[[ "$(file --mime-type -b \{})" == %s* ]]]=], s) end,
 		op = "||",
 	},
 	fish = {
 		wrap = function(cmd) return "begin; " .. cmd .. "; end" end,
 		prompt = function(s) return string.format([[not string match -q "*%s*" $FZF_PROMPT; and]], s) end,
 		prev = function(s) return string.format([[string match -q "*%s*" $FZF_PREVIEW_LABEL; and]], s) end,
+		mime_check = function(s) return string.format([[string match -q "%s*" (file --mime-type -b \{})]], s) end,
 		op = "; or",
 	},
 }
@@ -32,6 +34,12 @@ local fmt_opts = function(opt)
 	end
 	return ""
 end
+-- get extra preview command from user setup
+local check_cmd = function(opt)
+	if type(opt) == "string" and opt ~= "" then
+		return opt
+	end
+end
 local get_user_opts = ya.sync(function(state)
 	local opts = state.custom_opts or {}
 
@@ -44,6 +52,7 @@ local get_user_opts = ya.sync(function(state)
 		eza = fmt_opts(opts.eza),
 		eza_meta = fmt_opts(opts.eza_meta),
 		rga_preview = fmt_opts(opts.rga_preview),
+		img_preview = check_cmd(opts.img_preview),
 	}
 end)
 
@@ -105,6 +114,17 @@ local rga_preview_with_header = function(user_opts)
 			"rga --context 5 --no-messages --pretty " .. user_opts .. [[ \{q} \{};]],
 			header.bar,
 		}, " "))
+end
+
+local function img_preview_with_header(cmd)
+	local header = ansi_grid_header()
+
+	return table.concat({
+		header.bar,
+		header.label.file,
+		header.bar,
+		cmd .. [[ \{};]],
+	}, " ")
 end
 
 -- common `fzf` base cmd
@@ -204,7 +224,22 @@ local function build_search_by_name(search_type, user_opts)
 	end
 
 	local bat_prev = string.format([[bat --color=always --style=grid,header %s \{}]], user_opts.bat)
-	local default_prev = string.format([[test -d \{} && %s || %s]], sh.wrap(eza_preview("default", user_opts)), bat_prev)
+
+	local file_prev = bat_prev
+
+	-- optional, earlier entries take precedence
+	local extra_previews = {}
+	-- image
+	if user_opts.img_preview then
+		table.insert(extra_previews, { mime = "image/", cmd = img_preview_with_header(user_opts.img_preview) })
+	end
+	for i = #extra_previews, 1, -1 do
+		local ep = extra_previews[i]
+		file_prev = string.format([[%s && %s || %s]], sh.mime_check(ep.mime), sh.wrap(ep.cmd), sh.wrap(file_prev))
+	end
+
+	local default_prev =
+		string.format([[test -d \{} && %s || %s]], sh.wrap(eza_preview("default", user_opts)), sh.wrap(file_prev))
 
 	local specific_options = {
 		"--bind='ctrl-o:execute:$EDITOR {1}'",
@@ -304,6 +339,7 @@ local function setup(state, opts)
 		eza = opts.eza,
 		eza_meta = opts.eza_meta,
 		rga_preview = opts.rga_preview,
+		img_preview = opts.img_preview,
 	}
 end
 
