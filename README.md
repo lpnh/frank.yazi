@@ -263,14 +263,30 @@ preview (`bat`) for image files
 
 note that image rendering in terminals can be a little tricky. before using
 this feature, make sure your current environment supports it and the command is
-correct and properly configured.
+properly configured
 
 `fzf` exposes `$FZF_PREVIEW_COLUMNS` and `$FZF_PREVIEW_LINES` environment
 variables which can be used to set the output image dimensions
 
-so, using [chafa](https://hpjansson.org/chafa/), for example, the command would
-look like: `chafa --size=${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES}`. for
-`fish`, it becomes: `chafa --size=$FZF_PREVIEW_COLUMNS"x"$FZF_PREVIEW_LINES`
+**important**: the `FZF_PREVIEW_LINES` do not account for the 3 lines used by
+this plugin to print its custom header. so we need to adjust it accordingly
+
+using [chafa](https://hpjansson.org/chafa/), for example, the `img_preview`
+entry would look like:
+
+```lua
+require("frank"):setup {
+  img_preview = 'chafa --size="${FZF_PREVIEW_COLUMNS}x$((FZF_PREVIEW_LINES - 3))"',
+}
+```
+
+for `fish`, it becomes:
+
+```lua
+require("frank"):setup {
+  img_preview = 'chafa --size=$FZF_PREVIEW_COLUMNS"x"(math $FZF_PREVIEW_LINES - 3)',
+}
+```
 
 **hint**: `ctrl-]` and `ctrl-\` keybinds can be used to toggle the preview
 window size and position, respectively
