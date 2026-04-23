@@ -142,6 +142,7 @@ local function build_from_fzf_base(search_cmd, preview_cmd, preview_window, prom
 	local base_tbl = {
 		"fzf",
 		"--ansi",
+		"--delimiter=:",
 		"--no-multi",
 		"--reverse",
 		string.format("--bind='start:reload(%s)+transform:%s'", search_cmd, toggle_preview),
@@ -173,7 +174,7 @@ local function build_search_by_content(search_type, user_opts)
 			prev = string.format([[bat --color=always %s --highlight-line=\{2} \{1}]], user_opts.bat),
 			prev_window = "~3,+{2}+3/2,up,66%",
 			prompt = "rg> ",
-			specific_options = { "--disabled", "--bind='ctrl-o:execute:$EDITOR {1} +{2}'", "--delimiter=:", "--nth=3.." },
+			specific_options = { "--disabled", "--bind='ctrl-o:execute:$EDITOR {1} +{2}'", "--nth=3.." },
 			fzf_match = function(cmd_grep)
 				local bind_fzf_match_tmpl = "--bind='ctrl-s:transform:%s "
 					.. [[echo "rebind(change)+change-prompt(rg> )+disable-search+clear-query+reload:%s || true" %s ]]
@@ -242,7 +243,7 @@ local function build_search_by_name(search_type, user_opts)
 		string.format([[test -d \{} && %s || %s]], sh.wrap(eza_preview("default", user_opts)), sh.wrap(file_prev))
 
 	local specific_options = {
-		"--bind='ctrl-o:execute:$EDITOR {1}'",
+		"--bind='ctrl-o:execute:$EDITOR {}'",
 		string.format(
 			"--bind='ctrl-s:transform:%s "
 				.. [[echo "rebind(change)+change-prompt(fd> )+clear-query+reload:%s" %s ]]
