@@ -243,7 +243,7 @@ local function build_search_by_name(search_type, user_opts)
 		string.format([[test -d \{} && %s || %s]], sh.wrap(eza_preview("default", user_opts)), sh.wrap(file_prev))
 
 	local specific_options = {
-		"--bind='ctrl-o:execute:$EDITOR {1}'",
+		"--bind='ctrl-o:execute:$EDITOR {}'",
 		string.format(
 			"--bind='ctrl-s:transform:%s "
 				.. [[echo "rebind(change)+change-prompt(fd> )+clear-query+reload:%s" %s ]]
